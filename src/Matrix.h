@@ -1,11 +1,10 @@
 #include <iostream>
 #include <vector>
 #include <iomanip>
-using std::vector;
 
-// Solution to linking error
 #ifndef _MATRIX_H_
 #define _MATRIX_H_
+
 template <class T>
 class Matrix
 {
@@ -14,16 +13,20 @@ class Matrix
     private:
         unsigned rows;
         unsigned cols;
-        vector<vector<T>> data;
+        std::vector<std::vector<T>> data;
 
     public:
-        Matrix(unsigned, unsigned, T);
-        Matrix(unsigned, unsigned);
-        Matrix(unsigned n);
+        Matrix(unsigned, unsigned _cols);
+        Matrix(unsigned, unsigned _cols, const std::vector<std::vector<T>>& _data);
         void print() const;
-        T &operator()(unsigned &, unsigned &);
+        T &operator()(unsigned, unsigned);
         Matrix operator*(Matrix &);
-        static Matrix<T> compute_grad(Matrix<T>& A, Matrix<T>& B, Matrix<T>& C);
-        Matrix<T> convolute(Matrix<T>& kernel);
+        Matrix<T> Conv2D(Matrix<T>& kernel);
+        virtual ~Matrix();
+
+        static Matrix<T> DilateMatrix(Matrix<T>& A, unsigned tiles);
 };
+
+#include "Matrix.cpp"
+
 #endif

@@ -28,5 +28,5 @@ GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(dnnl)
 
-add_executable(test-onednn ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp) 
+add_executable(test-onednn ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp) 
 target_link_libraries(test-onednn m dnnl)
