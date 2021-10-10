@@ -1,6 +1,30 @@
-#include<bits/stdc++.h>
+#include <iostream>
+#include <vector>
+#include <iomanip>
+#include <bits/stdc++.h>
 
-template <class T>
+#ifndef _MATRIX_H_
+#define _MATRIX_H_
+
+template <typename T>
+class Matrix
+{
+    static_assert(std::is_arithmetic<T>::value, "T must be arithmetic type.");
+
+    private:
+        unsigned rows;
+        unsigned cols;
+        std::vector<std::vector<T>> data;
+
+    public:
+        Matrix(unsigned, unsigned _cols);
+        Matrix(unsigned, unsigned _cols, const std::vector<std::vector<T>>& _data);
+        void print() const;
+        T &operator()(unsigned, unsigned);
+        Matrix operator*(Matrix &);
+};
+
+template <typename T>
 Matrix<T>::Matrix(unsigned _rows, unsigned _cols)
 {
     rows = _rows;
@@ -13,7 +37,7 @@ Matrix<T>::Matrix(unsigned _rows, unsigned _cols)
     }
 }
 
-template <class T>
+template <typename T>
 Matrix<T>::Matrix(unsigned _rows, unsigned _cols, const std::vector<std::vector<T>>& _data)
 {
     rows = _rows;
@@ -28,7 +52,7 @@ Matrix<T>::Matrix(unsigned _rows, unsigned _cols, const std::vector<std::vector<
     data = _data;
 }
 
-template <class T>
+template <typename T>
 void Matrix<T>::print() const
 {
     for (unsigned i = 0; i < rows; i++)
@@ -42,13 +66,13 @@ void Matrix<T>::print() const
     std::cout << std::endl;
 }
 
-template <class T>
+template <typename T>
 T &Matrix<T>::operator()(unsigned row, unsigned col)
 {
     return this->data[row][col];
 }
 
-template <class T>
+template <typename T>
 Matrix<T> Matrix<T>::operator*(Matrix<T> &B)
 {
     if (cols != B.rows)
@@ -73,50 +97,4 @@ Matrix<T> Matrix<T>::operator*(Matrix<T> &B)
     return result;
 }
 
-template<class T>
-Matrix<T> Matrix<T>::DilateMatrix(Matrix<T>& A, unsigned tiles)
-{
-   if(tiles == 0 || tiles == 1 )
-   {
-       return A;
-   }
-   
-   if(ceil(log2(tiles)) == floor(log2(tiles)))
-   {
-        unsigned dilatedRows = tiles * A.rows + (tiles - 1);
-        unsigned dilatedCols = tiles * A.cols + (tiles - 1);
-
-        Matrix<T> dilatedMatrix = Matrix<T>(dilatedRows, dilatedCols);
-
-        for (unsigned i = 0; i < A.rows; i++)
-        {
-            for (unsigned j = 0; j < A.cols; j++)
-            {
-                dilatedMatrix( (i+1)*tiles-1, (j+1)*tiles-1 ) = A(i,j);
-            }
-        }        
-        return dilatedMatrix;
-    }
-   
-   return A;
-
-}
-
-template<class T>
-Matrix<T> Matrix<T>::Conv2D(Matrix<T>& kernel)
-{
-    int cutoutRows = (kernel.rows-1)/2;
-    int cotoutCols = (kernel.cols-1)/2;
-
-    std::cout << kernel.cols << std::endl;
-    std::cout << kernel.rows << std::endl;
-
-    std::cout << cotoutCols << std::endl;
-    std::cout << cutoutRows << std::endl;
-    
-    Matrix<T> empty = Matrix<T>(0,0);
-    return empty; 
-}
-
-template<class T>
-Matrix<T>::~Matrix() {}
+#endif
