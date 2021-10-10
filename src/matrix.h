@@ -1,10 +1,9 @@
+#pragma once
+
 #include <iostream>
 #include <vector>
 #include <iomanip>
 #include <bits/stdc++.h>
-
-#ifndef _MATRIX_H_
-#define _MATRIX_H_
 
 template <typename T>
 class Matrix
@@ -17,11 +16,14 @@ class Matrix
         std::vector<std::vector<T>> data;
 
     public:
+        unsigned getRowsCount();
+        unsigned getColsCount();
         Matrix(unsigned, unsigned _cols);
         Matrix(unsigned, unsigned _cols, const std::vector<std::vector<T>>& _data);
         void print() const;
         T &operator()(unsigned, unsigned);
         Matrix operator*(Matrix &);
+        Matrix<T> DilateMatrix(Matrix<T>& A, unsigned tiles);
 };
 
 template <typename T>
@@ -67,6 +69,18 @@ void Matrix<T>::print() const
 }
 
 template <typename T>
+unsigned Matrix<T>::getRowsCount()
+{
+    return rows;
+}
+
+template <typename T>
+unsigned Matrix<T>::getColsCount()
+{
+    return cols;
+}
+
+template <typename T>
 T &Matrix<T>::operator()(unsigned row, unsigned col)
 {
     return this->data[row][col];
@@ -97,4 +111,30 @@ Matrix<T> Matrix<T>::operator*(Matrix<T> &B)
     return result;
 }
 
-#endif
+template<typename T>
+Matrix<T> DilateMatrix(Matrix<T>& A, unsigned tiles)
+{
+   if(tiles == 0 || tiles == 1 )
+   {
+       return A;
+   }
+   
+   if(ceil(log2(tiles)) == floor(log2(tiles)))
+   {
+        unsigned dilatedRows = tiles * A.getRowsCount() + (tiles - 1);
+        unsigned dilatedCols = tiles * A.getColsCount() + (tiles - 1);
+
+        Matrix<T> dilatedMatrix = Matrix<T>(dilatedRows, dilatedCols);
+
+        for (unsigned i = 0; i < A.getRowsCount(); i++)
+        {
+            for (unsigned j = 0; j < A.getColsCount(); j++)
+            {
+                dilatedMatrix( (i+1)*tiles-1, (j+1)*tiles-1 ) = A(i,j);
+            }
+        }        
+        return dilatedMatrix;
+    }
+   
+   return A;
+}
