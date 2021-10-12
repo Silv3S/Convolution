@@ -109,7 +109,39 @@ Matrix<T> AddPadding(Matrix<T>& matrix, paddingOptions padding, unsigned kernelW
         
         case mirrorPadding:
         {
-         
+            // padding left and right
+            for (unsigned i = 0; i < matrix.getRowsCount(); i++)
+            {
+                for (unsigned j = 0; j < paddingWidth; j++)
+                {
+                    paddingMatrix(i + paddingHeight, j) = matrix(i, paddingWidth - j - 1);
+                    paddingMatrix(i + paddingHeight, j + matrix.getColsCount() + paddingWidth) = matrix(i, matrix.getColsCount() - 1- j);
+                }
+            }
+
+            // padding top and bottom
+            for (unsigned j = 0; j < matrix.getColsCount(); j++)
+            {
+
+                for (unsigned i = 0; i < paddingHeight; i++)
+                {
+                    paddingMatrix(i + matrix.getRowsCount() + paddingHeight, j + paddingWidth)  = matrix(matrix.getRowsCount() - 1 - i, j);;
+                    paddingMatrix(i, j + paddingWidth) = matrix(paddingHeight - i - 1, j);;
+                }
+            }
+
+            // padding corners
+
+            for (unsigned i = 0; i < paddingHeight; i++)
+            {              
+                for (unsigned j = 0; j < paddingWidth; j++)
+                {
+                    paddingMatrix(i, j) = matrix(paddingHeight - i - 1, paddingWidth - j - 1);
+                    paddingMatrix(i + matrix.getRowsCount() + paddingHeight , j + paddingWidth + matrix.getColsCount()) = matrix(matrix.getRowsCount() - 1 - i , matrix.getColsCount() - 1 - j);
+                    paddingMatrix(i, j + matrix.getColsCount() + paddingWidth) = matrix(paddingHeight - i - 1, matrix.getColsCount() - j - 1);
+                    paddingMatrix(i + matrix.getRowsCount() + paddingHeight, j) = matrix(matrix.getRowsCount() - i - 1, paddingWidth - j - 1);   
+                }
+            }         
         }
         break;
     }
