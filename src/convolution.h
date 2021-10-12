@@ -11,24 +11,32 @@ enum paddingOptions {
 
 template <typename T>
 class Convolution
-{    
+{   
+    private:
+        Matrix<T> GetFragmentCoveredByKernel(Matrix<T>& paddingMatrix, Matrix<T>& matrixCoveredByKernel, unsigned omi, unsigned omj);
+        T SumNeighborhood(Matrix<T>& matrixCoveredByKernel, Matrix<T>& kernel, T bias);
     public:
         Matrix<T> AddPadding(Matrix<T>& matrix, paddingOptions padding, unsigned kernelWidth, unsigned kernelHeight);
         static Matrix<T> Convolve(Matrix<T>& matrix, Matrix<T>& kernel, paddingOptions padding, unsigned stride = 1);
 };
 
-
 template <typename T>
-Matrix<T> Convolve(Matrix<T>& matrix, Matrix<T>& kernel, paddingOptions padding, unsigned stride = 1)
+Matrix<T> Convolve(Matrix<T>& matrix, Matrix<T>& kernel, paddingOptions padding, unsigned stride = 1, T bias = 0.0)
 {
-    
     Matrix<T> paddingMatrix = AddPadding(matrix, padding, kernel.getColsCount(),kernel.getRowsCount());
+    Matrix<T> featureMap(matrix.getRowsCount() / stride, matrix.getColsCount() / stride);
+    Matrix<T> matrixCoveredByKernel(kernel.getRowsCount(), kernel.getColsCount());
+  
+    for (unsigned i = 0; i < matrix.getRowsCount(); i += stride)
+    {
+        for (unsigned j = 0; j < matrix.getColsCount(); j += stride)
+        {
+            matrixCoveredByKernel = GetFragmentCoveredByKernel(paddingMatrix, matrixCoveredByKernel, i, j);
+            featureMap(i,j) = SumNeighborhood(matrixCoveredByKernel, kernel, bias);
+        }
+    }
 
-    matrix.print();
-    std::cout << std::endl << "Hello there"<< stride << "  i " << padding << std::endl ;
-    kernel.print();
-
-    return matrix;
+    return featureMap;
 }
 
 template <typename T>
@@ -146,5 +154,34 @@ Matrix<T> AddPadding(Matrix<T>& matrix, paddingOptions padding, unsigned kernelW
         break;
     }
 
+    paddingMatrix.print();
     return paddingMatrix;
+}
+
+template <typename T>
+Matrix<T> GetFragmentCoveredByKernel(Matrix<T>& paddingMatrix, Matrix<T>& matrixCoveredByKernel, unsigned omi, unsigned omj)
+{
+    for (unsigned i = 0; i < matrixCoveredByKernel.getRowsCount(); i++)
+    {
+        for (unsigned j = 0; j < matrixCoveredByKernel.getColsCount(); j++)
+        {            
+             matrixCoveredByKernel(i, j) = paddingMatrix(omi + i, omj + j);   
+        }        
+    }    
+    
+    return matrixCoveredByKernel;
+}
+
+template <typename T>
+T SumNeighborhood(Matrix<T>& matrixCoveredByKernel, Matrix<T>& kernel, T bias = 0.0)
+{
+    T sum = bias;
+    for (unsigned i = 0; i < matrixCoveredByKernel.getRowsCount(); i++)
+    {
+        for (unsigned j = 0; j < matrixCoveredByKernel.getColsCount(); j++)
+        {
+            sum += matrixCoveredByKernel(i,j) * kernel(i,j);   
+        }        
+    }    
+    return sum;
 }

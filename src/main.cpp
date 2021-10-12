@@ -2,21 +2,26 @@
 
 int main()
 {
-    std::vector<std::vector<double>> values = {
-        {10.0,1.0,1.0,1.0,1.0,1.0,11.0},
-        {2.0,2.0,2.0,2.0,2.0,2.0,2.0},
-        {3.0,3.0,3.0,3.0,3.0,3.0,3.0},
-        {4.0,4.0,4.0,4.0,4.0,4.0,4.0},
-        {15.0,5.0,5.0,5.0,5.0,5.0,51.0}
+    std::vector<std::vector<float>> matrixValues = {
+        {1.0, 2.0, 3.0},
+        {4.0, 5.0, 6.0},
+        {7.0, 8.0, 9.0},
+        };
+
+    std::vector<std::vector<float>> kernelValues = {
+        {1, 2, 1},
+        {0, 0, 0},
+        {-1, -2, -1}
         };
         
-    Matrix<double> someMatrix(5,7, values);
-    Matrix<double> dilatedMatrix = DilateMatrix(someMatrix,2);
-    Matrix<double> paddedMatrix = AddPadding(someMatrix, replicatePadding, 7, 7);
+    Matrix<float> originalMatrix(matrixValues.size(), matrixValues[0].size(), matrixValues);
+    Matrix<float> originalKernel(kernelValues.size(), kernelValues[0].size(), kernelValues);
+ 
+    originalMatrix.print();
+    originalKernel.print();
 
-    someMatrix.print();
-    dilatedMatrix.print();
-    paddedMatrix.print();
+    Matrix<float> result = Convolve(originalMatrix, originalKernel, zeroPadding);
+    result.print();
 
     return 0;
 }
