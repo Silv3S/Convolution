@@ -153,8 +153,6 @@ Matrix<T> AddPadding(Matrix<T>& matrix, paddingOptions padding, unsigned kernelW
         }
         break;
     }
-
-    paddingMatrix.print();
     return paddingMatrix;
 }
 

@@ -20,6 +20,7 @@ class Matrix
         unsigned getColsCount();
         Matrix(unsigned, unsigned _cols);
         Matrix(unsigned, unsigned _cols, const std::vector<std::vector<T>>& _data);
+        Matrix(const std::vector<T>& _data, unsigned _cols);
         void print() const;
         T &operator()(unsigned, unsigned);
         Matrix operator*(Matrix &);
@@ -52,6 +53,26 @@ Matrix<T>::Matrix(unsigned _rows, unsigned _cols, const std::vector<std::vector<
     }
 
     data = _data;
+}
+
+template <typename T>
+Matrix<T>::Matrix(const std::vector<T>& _inputData, unsigned _cols)
+{
+    cols = _cols;
+    rows = _inputData.size() / _cols;
+
+    data.resize(rows);
+    for (unsigned i = 0; i < rows; i++)
+    {
+        data[i].resize(_cols);
+    }
+
+    for (unsigned i = 0; i < _inputData.size(); i++)
+    {
+        unsigned currentJ = i % _cols;
+        unsigned currentI = (i - currentJ) / _cols; 
+        data[currentI][currentJ] = _inputData[i];
+    }    
 }
 
 template <typename T>
@@ -93,7 +114,7 @@ Matrix<T> Matrix<T>::operator*(Matrix<T> &B)
     {
         throw std::invalid_argument("The dimensions of the matrix do not allow multiplication");
     }
-    Matrix result(rows, B.cols, 0);
+    Matrix<T> result(rows, B.cols);
     unsigned i, j, k;
     T temp = 0.0;
     for (i = 0; i < rows; i++)
@@ -138,3 +159,20 @@ Matrix<T> DilateMatrix(Matrix<T>& A, unsigned tiles)
    
    return A;
 }
+
+template<typename T>
+std::vector<T> Flatten(Matrix<T> A)
+{
+    std::vector<T> flatVec;
+
+    for (unsigned i = 0; i < A.getRowsCount(); i++)
+    {
+        for (unsigned j = 0; j < A.getColsCount(); j++)
+        {
+            flatVec.push_back(A(i,j));
+        }         
+    }
+
+    return flatVec;
+}
+
