@@ -191,7 +191,8 @@ T SumNeighborhood(Matrix<T>& matrixCoveredByKernel, Matrix<T>& kernel, T bias = 
     return sum;
 }
 
-Matrix<float> ConvolutionOneDNN(Matrix<float> userData, Matrix<float> kernel, float bias = 0, int strides = 1)
+template <typename T>
+Matrix<T> ConvolutionOneDNN(Matrix<T> userData, Matrix<T> kernel, T bias = 0, unsigned strides = 1)
 {
     dnnl::engine engine(dnnl::engine::kind::cpu, 0);
     dnnl::stream engine_stream(engine);
@@ -221,20 +222,32 @@ Matrix<float> ConvolutionOneDNN(Matrix<float> userData, Matrix<float> kernel, fl
     dnnl::memory::dims padding_dims_l = {PH_L, PW_L};
     dnnl::memory::dims padding_dims_r = {PH_R, PW_R};
 
-    std::vector<float> src_data = Flatten(userData);
-    std::vector<float> weights_data = Flatten(kernel);
-    std::vector<float> bias_data{bias};
-    std::vector<float> dst_data(product(dst_dims));
+    std::vector<T> src_data = Flatten(userData);
+    std::vector<T> weights_data = Flatten(kernel);
+    std::vector<T> bias_data{bias};
+    std::vector<T> dst_data(product(dst_dims));
 
-    auto user_src_mem = memory({src_dims, dt::f32, tag::nchw}, engine);
-    auto user_weights_mem = memory({weights_dims, dt::f32, tag::oihw}, engine);
-    auto user_dst_mem = memory({dst_dims, dt::f32, tag::nchw}, engine);
+    dt currentTypeS, currentTypeU;
+    if(std::is_same<T,float>::value)
+    {
+        currentTypeS = dt::f32;
+        currentTypeU = dt::f32;
+    }
+    else if(std::is_same<T,int8_t>::value)
+    {
+        currentTypeS = dt::s8;
+        currentTypeU = dt::u8;
+    }
+
+    auto user_src_mem = memory({src_dims, currentTypeU, tag::nchw}, engine);
+    auto user_weights_mem = memory({weights_dims, currentTypeS, tag::oihw}, engine);
+    auto user_dst_mem = memory({dst_dims, currentTypeS, tag::nchw}, engine);
     
-    auto conv_src_md = memory::desc(src_dims, dt::f32, tag::any);
-    auto conv_weights_md = memory::desc(weights_dims, dt::f32, tag::any);
-    auto conv_dst_md = memory::desc(dst_dims, dt::f32, tag::any);
+    auto conv_src_md = memory::desc(src_dims, currentTypeU, tag::any);
+    auto conv_weights_md = memory::desc(weights_dims, currentTypeS, tag::any);
+    auto conv_dst_md = memory::desc(dst_dims, currentTypeS, tag::any);
 
-    auto user_bias_md = memory::desc(bias_dims, dt::f32, tag::a);
+    auto user_bias_md = memory::desc(bias_dims, currentTypeS, tag::a);
     auto user_bias_mem = memory(user_bias_md, engine);
 
     write_to_dnnl_memory(src_data.data(), user_src_mem);
@@ -284,5 +297,5 @@ Matrix<float> ConvolutionOneDNN(Matrix<float> userData, Matrix<float> kernel, fl
 
     engine_stream.wait();
     read_from_dnnl_memory(dst_data.data(), user_dst_mem);
-    return Matrix<float>(dst_data, OW);
+    return Matrix<T>(dst_data, OW);
 }
