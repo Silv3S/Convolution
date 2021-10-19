@@ -82,7 +82,7 @@ void Matrix<T>::print() const
     {
         for (unsigned j = 0; j < cols; j++)
         {
-            std::cout << std::setw(3) << data[i][j] << " ";
+            std::cout << std::setw(6) << data[i][j] << " ";
         }
         std::cout << std::endl;
     }
@@ -96,7 +96,21 @@ void Matrix<int8_t>::print() const
     {
         for (unsigned j = 0; j < cols; j++)
         {
-            std::cout << std::setw(3) << int(data[i][j]) << " ";
+            std::cout << std::setw(6) << int(data[i][j]) << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+template <>
+void Matrix<uint8_t>::print() const
+{
+    for (unsigned i = 0; i < rows; i++)
+    {
+        for (unsigned j = 0; j < cols; j++)
+        {
+            std::cout << std::setw(6) << int(data[i][j]) << " ";
         }
         std::cout << std::endl;
     }

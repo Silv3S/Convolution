@@ -18,7 +18,7 @@ enum paddingOptions {
 
 template <typename T>
 class Convolution
-{   
+{
     private:
         Matrix<T> GetFragmentCoveredByKernel(Matrix<T>& paddingMatrix, Matrix<T>& matrixCoveredByKernel, unsigned omi, unsigned omj);
         T SumNeighborhood(Matrix<T>& matrixCoveredByKernel, Matrix<T>& kernel, T bias);
@@ -33,7 +33,7 @@ Matrix<T> Convolve(Matrix<T>& matrix, Matrix<T>& kernel, paddingOptions padding,
     Matrix<T> paddingMatrix = AddPadding(matrix, padding, kernel.getColsCount(),kernel.getRowsCount());
     Matrix<T> featureMap(matrix.getRowsCount() / stride, matrix.getColsCount() / stride);
     Matrix<T> matrixCoveredByKernel(kernel.getRowsCount(), kernel.getColsCount());
-  
+
     for (unsigned i = 0; i < matrix.getRowsCount(); i += stride)
     {
         for (unsigned j = 0; j < matrix.getColsCount(); j += stride)
@@ -57,7 +57,7 @@ Matrix<T> AddPadding(Matrix<T>& matrix, paddingOptions padding, unsigned kernelW
     unsigned paddingWidth = (kernelWidth - 1) / 2;
     unsigned paddingHeight = (kernelHeight - 1) / 2;
     Matrix<T> paddingMatrix = Matrix<T>(matrix.getRowsCount() + 2 * paddingHeight, matrix.getColsCount() + 2 * paddingWidth);
-    
+
     for (unsigned i = 0; i < matrix.getRowsCount();  i++)
     {
         for (unsigned j = 0; j < matrix.getColsCount();  j++)
@@ -65,7 +65,7 @@ Matrix<T> AddPadding(Matrix<T>& matrix, paddingOptions padding, unsigned kernelW
             paddingMatrix(i + paddingWidth, j + paddingHeight) = matrix(i,j);
         }
     }
-    
+
     switch(padding)
     {
         case replicatePadding:
@@ -102,7 +102,7 @@ Matrix<T> AddPadding(Matrix<T>& matrix, paddingOptions padding, unsigned kernelW
             T rightBottomValue = matrix(matrix.getRowsCount() - 1, matrix.getColsCount() - 1);
 
             for (unsigned i = 0; i < paddingHeight; i++)
-            {              
+            {
                 for (unsigned j = 0; j < paddingWidth; j++)
                 {
                     paddingMatrix(i, j) = leftTopValue;
@@ -111,7 +111,7 @@ Matrix<T> AddPadding(Matrix<T>& matrix, paddingOptions padding, unsigned kernelW
             }
 
             for (unsigned i = paddingMatrix.getRowsCount() - 1; i > paddingMatrix.getRowsCount() - 1 - paddingHeight; i--)
-            {              
+            {
                 for (unsigned j = 0; j < paddingWidth; j++)
                 {
                     paddingMatrix(i, j) = leftBottomValue;
@@ -121,7 +121,7 @@ Matrix<T> AddPadding(Matrix<T>& matrix, paddingOptions padding, unsigned kernelW
 
         }
         break;
-        
+
         case mirrorPadding:
         {
             // padding left and right
@@ -148,15 +148,15 @@ Matrix<T> AddPadding(Matrix<T>& matrix, paddingOptions padding, unsigned kernelW
             // padding corners
 
             for (unsigned i = 0; i < paddingHeight; i++)
-            {              
+            {
                 for (unsigned j = 0; j < paddingWidth; j++)
                 {
                     paddingMatrix(i, j) = matrix(paddingHeight - i - 1, paddingWidth - j - 1);
                     paddingMatrix(i + matrix.getRowsCount() + paddingHeight , j + paddingWidth + matrix.getColsCount()) = matrix(matrix.getRowsCount() - 1 - i , matrix.getColsCount() - 1 - j);
                     paddingMatrix(i, j + matrix.getColsCount() + paddingWidth) = matrix(paddingHeight - i - 1, matrix.getColsCount() - j - 1);
-                    paddingMatrix(i + matrix.getRowsCount() + paddingHeight, j) = matrix(matrix.getRowsCount() - i - 1, paddingWidth - j - 1);   
+                    paddingMatrix(i + matrix.getRowsCount() + paddingHeight, j) = matrix(matrix.getRowsCount() - i - 1, paddingWidth - j - 1);
                 }
-            }         
+            }
         }
         break;
     }
@@ -169,11 +169,11 @@ Matrix<T> GetFragmentCoveredByKernel(Matrix<T>& paddingMatrix, Matrix<T>& matrix
     for (unsigned i = 0; i < matrixCoveredByKernel.getRowsCount(); i++)
     {
         for (unsigned j = 0; j < matrixCoveredByKernel.getColsCount(); j++)
-        {            
-             matrixCoveredByKernel(i, j) = paddingMatrix(omi + i, omj + j);   
-        }        
-    }    
-    
+        {
+             matrixCoveredByKernel(i, j) = paddingMatrix(omi + i, omj + j);
+        }
+    }
+
     return matrixCoveredByKernel;
 }
 
@@ -185,14 +185,13 @@ T SumNeighborhood(Matrix<T>& matrixCoveredByKernel, Matrix<T>& kernel, T bias = 
     {
         for (unsigned j = 0; j < matrixCoveredByKernel.getColsCount(); j++)
         {
-            sum += matrixCoveredByKernel(i,j) * kernel(i,j);   
-        }        
-    }    
+            sum += matrixCoveredByKernel(i,j) * kernel(i,j);
+        }
+    }
     return sum;
 }
 
-template <typename T>
-Matrix<T> ConvolutionOneDNN(Matrix<T> userData, Matrix<T> kernel, T bias = 0, unsigned strides = 1)
+Matrix<float> ConvolutionOneDNN(Matrix<float> userData, Matrix<float> kernel, float bias = 0, unsigned strides = 1)
 {
     dnnl::engine engine(dnnl::engine::kind::cpu, 0);
     dnnl::stream engine_stream(engine);
@@ -217,49 +216,37 @@ Matrix<T> ConvolutionOneDNN(Matrix<T> userData, Matrix<T> kernel, T bias = 0, un
     dnnl::memory::dims src_dims = {N, IC, IH, IW};
     dnnl::memory::dims weights_dims = {OC, IC, KH, KW};
     dnnl::memory::dims bias_dims = {OC};
-    dnnl::memory::dims dst_dims = {N, OC, OH, OW};        
+    dnnl::memory::dims dst_dims = {N, OC, OH, OW};
     dnnl::memory::dims strides_dims = {SH, SW};
     dnnl::memory::dims padding_dims_l = {PH_L, PW_L};
     dnnl::memory::dims padding_dims_r = {PH_R, PW_R};
 
-    std::vector<T> src_data = Flatten(userData);
-    std::vector<T> weights_data = Flatten(kernel);
-    std::vector<T> bias_data{bias};
-    std::vector<T> dst_data(product(dst_dims));
+    std::vector<float> src_data = Flatten(userData);
+    std::vector<float> weights_data = Flatten(kernel);
+    std::vector<float> bias_data{bias};
+    std::vector<float> dst_data(product(dst_dims));
 
-    dt currentTypeS, currentTypeU;
-    if(std::is_same<T,float>::value)
-    {
-        currentTypeS = dt::f32;
-        currentTypeU = dt::f32;
-    }
-    else if(std::is_same<T,int8_t>::value)
-    {
-        currentTypeS = dt::s8;
-        currentTypeU = dt::u8;
-    }
+    auto user_src_mem = memory({src_dims, dt::f32, tag::nchw}, engine);
+    auto user_weights_mem = memory({weights_dims, dt::f32, tag::oihw}, engine);
+    auto user_dst_mem = memory({dst_dims, dt::f32, tag::nchw}, engine);
 
-    auto user_src_mem = memory({src_dims, currentTypeU, tag::nchw}, engine);
-    auto user_weights_mem = memory({weights_dims, currentTypeS, tag::oihw}, engine);
-    auto user_dst_mem = memory({dst_dims, currentTypeS, tag::nchw}, engine);
-    
-    auto conv_src_md = memory::desc(src_dims, currentTypeU, tag::any);
-    auto conv_weights_md = memory::desc(weights_dims, currentTypeS, tag::any);
-    auto conv_dst_md = memory::desc(dst_dims, currentTypeS, tag::any);
+    auto conv_src_md = memory::desc(src_dims, dt::f32, tag::any);
+    auto conv_weights_md = memory::desc(weights_dims, dt::f32, tag::any);
+    auto conv_dst_md = memory::desc(dst_dims, dt::f32, tag::any);
 
-    auto user_bias_md = memory::desc(bias_dims, currentTypeS, tag::a);
+    auto user_bias_md = memory::desc(bias_dims, dt::f32, tag::a);
     auto user_bias_mem = memory(user_bias_md, engine);
 
     write_to_dnnl_memory(src_data.data(), user_src_mem);
     write_to_dnnl_memory(weights_data.data(), user_weights_mem);
-    write_to_dnnl_memory(bias_data.data(), user_bias_mem);   
-   
+    write_to_dnnl_memory(bias_data.data(), user_bias_mem);
+
     auto conv_desc = convolution_forward::desc(prop_kind::forward,
             algorithm::convolution_direct, conv_src_md, conv_weights_md,
             user_bias_md, conv_dst_md, strides_dims, padding_dims_l,
             padding_dims_r);
 
-    auto conv_pd = convolution_forward::primitive_desc(conv_desc, engine);  
+    auto conv_pd = convolution_forward::primitive_desc(conv_desc, engine);
 
     auto conv_src_mem = user_src_mem;
     auto conv_weights_mem = user_weights_mem;
@@ -297,5 +284,10 @@ Matrix<T> ConvolutionOneDNN(Matrix<T> userData, Matrix<T> kernel, T bias = 0, un
 
     engine_stream.wait();
     read_from_dnnl_memory(dst_data.data(), user_dst_mem);
-    return Matrix<T>(dst_data, OW);
+    return Matrix<float>(dst_data, OW);
 }
+
+Matrix<float> QuantizedConvolutionOneDNN(Matrix<float> userData, Matrix<float> kernel, float bias = 0, unsigned strides = 1)
+{
+    
+} 
