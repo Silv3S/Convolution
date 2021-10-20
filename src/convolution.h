@@ -221,8 +221,8 @@ Matrix<float> ConvolutionOneDNN(Matrix<float> userData, Matrix<float> kernel, fl
     dnnl::memory::dims padding_dims_l = {PH_L, PW_L};
     dnnl::memory::dims padding_dims_r = {PH_R, PW_R};
 
-    std::vector<float> src_data = Flatten(userData);
-    std::vector<float> weights_data = Flatten(kernel);
+    std::vector<float> src_data = userData.Flatten();
+    std::vector<float> weights_data = kernel.Flatten();
     std::vector<float> bias_data{bias};
     std::vector<float> dst_data(product(dst_dims));
 

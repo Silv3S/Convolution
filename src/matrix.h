@@ -25,6 +25,8 @@ class Matrix
         T &operator()(unsigned, unsigned);
         Matrix operator*(Matrix &);
         Matrix<T> DilateMatrix(Matrix<T>& A, unsigned tiles);
+        std::vector<T> Flatten();   
+        T AbsoluteMaximumValue();
 };
 
 template <typename T>
@@ -82,7 +84,7 @@ void Matrix<T>::print() const
     {
         for (unsigned j = 0; j < cols; j++)
         {
-            std::cout << std::setw(6) << data[i][j] << " ";
+            std::cout << std::setw(10) << data[i][j] << " ";
         }
         std::cout << std::endl;
     }
@@ -96,7 +98,7 @@ void Matrix<int8_t>::print() const
     {
         for (unsigned j = 0; j < cols; j++)
         {
-            std::cout << std::setw(6) << int(data[i][j]) << " ";
+            std::cout << std::setw(10) << int(data[i][j]) << " ";
         }
         std::cout << std::endl;
     }
@@ -110,7 +112,7 @@ void Matrix<uint8_t>::print() const
     {
         for (unsigned j = 0; j < cols; j++)
         {
-            std::cout << std::setw(6) << int(data[i][j]) << " ";
+            std::cout << std::setw(10) << int(data[i][j]) << " ";
         }
         std::cout << std::endl;
     }
@@ -189,18 +191,35 @@ Matrix<T> DilateMatrix(Matrix<T>& A, unsigned tiles)
 }
 
 template<typename T>
-std::vector<T> Flatten(Matrix<T> A)
+std::vector<T> Matrix<T>::Flatten() 
 {
     std::vector<T> flatVec;
 
-    for (unsigned i = 0; i < A.getRowsCount(); i++)
+    for (unsigned i = 0; i < rows; i++)
     {
-        for (unsigned j = 0; j < A.getColsCount(); j++)
+        for (unsigned j = 0; j < cols; j++)
         {
-            flatVec.push_back(A(i,j));
+            flatVec.push_back(data[i][j]);
         }         
     }
 
     return flatVec;
 }
 
+template<typename T>
+T Matrix<T>::AbsoluteMaximumValue()
+{
+    T maxAbsValue = data[0][0];
+
+    for (unsigned i = 0; i < rows; i++)
+    {
+        for (unsigned j = 0; j < cols; j++)
+        {
+            if(abs(data[i][j]) > maxAbsValue)
+            {
+                maxAbsValue = abs(data[i][j]);
+            }
+        }        
+    }    
+    return maxAbsValue;
+}
