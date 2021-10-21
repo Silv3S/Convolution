@@ -7,14 +7,7 @@ int main(int argc, char **argv)
     
     for (unsigned i = 0; i < exampleData.size(); i++)
     {
-        QuantizeAndDequantize(exampleData[i].first);
-    }
-
-    std::cout << std::endl << "Convolution" << std::endl;
-
-    for (unsigned i = 0; i < exampleData.size(); i++)
-    {
-        std::cout << "Example " << i + 1 << std::endl;
+        std::cout << std::endl << "Example " << i + 1 << std::endl;
         std::cout << "float 32 data" << std::endl;
         exampleData[i].first.print();
 
@@ -28,5 +21,9 @@ int main(int argc, char **argv)
         std::cout << "oneDNN - float32 convolution result" << std::endl;
         Matrix<float> floatOneResult = ConvolutionOneDNN(exampleData[i].first, exampleData[i].second);
         floatOneResult.print();
-    }
+
+        std::cout << "oneDNN - int8 convolution result" << std::endl;
+        Matrix<float> intOneResult = QuantizedConvolutionOneDNN(exampleData[i].first, exampleData[i].second);
+        intOneResult.print();
+    } 
 }
