@@ -292,142 +292,112 @@ Matrix<float> QuantizedConvolutionOneDNN(Matrix<float> userData, Matrix<float> k
     dnnl::engine engine(dnnl::engine::kind::cpu, 0);
     dnnl::stream engine_stream(engine);
 
-     const dnnl::memory::dim
-        N = 1,                                  // batch size
-        IC = 1,                                 // input channels
-        IH = userData.getRowsCount(),           // input height
-        IW = userData.getColsCount(),           // input width
-        OC = 1,                                 // output channels
-        KH = kernel.getRowsCount(),             // weights height
-        KW = kernel.getColsCount(),             // weights width
-        PH_L = 1,                               // height padding: left
-        PH_R = 1,                               // height padding: right
-        PW_L = 1,                               // width padding: left
-        PW_R = 1,                               // width padding: right
-        SH = 1,                                 // height-wise stride
-        SW = 1,                                 // width-wise stride
-        OH = (IH - KH + PH_L + PH_R) / SH + 1,  // output height
-        OW = (IW - KW + PW_L + PW_R) / SW + 1;  // output width
+    const dnnl::memory::dim
+        IH = userData.getRowsCount(),
+        IW = userData.getColsCount(),
+        KH = kernel.getRowsCount(),
+        KW = kernel.getColsCount();
 
-    dnnl::memory::dims src_dims = {N, IC, IH, IW};
-    dnnl::memory::dims weights_dims = {OC, IC, KH, KW};
-    dnnl::memory::dims bias_dims = {OC};
-    dnnl::memory::dims dst_dims = {N, OC, OH, OW};
-    dnnl::memory::dims strides_dims = {SH, SW};
-    dnnl::memory::dims padding_dims_l = {PH_L, PW_L};
-    dnnl::memory::dims padding_dims_r = {PH_R, PW_R};
+    dnnl::memory::dims src_dims = {1, 1, IH, IW};
+    dnnl::memory::dims weights_dims = {1, 1, KH, KW};
+    dnnl::memory::dims bias_dims = {1};
+    dnnl::memory::dims dst_dims = {1, 1, IH, IW};
+    dnnl::memory::dims strides_dims = {strides, strides};
+    dnnl::memory::dims padding_dims = {(KH - 1) / 2, (KW - 1) / 2};
 
     std::vector<float> src_data = userData.Flatten();
     std::vector<float> weights_data = kernel.Flatten();
     std::vector<float> bias_data{bias};
-    // float scaleIn = 127 / userData.AbsoluteMaximumValue();
-    float scaleIn = 1;
     std::vector<float> dequantized_dst_data(product(dst_dims));
-
-    std::vector<int8_t> quantized_src_data(product(src_dims));
-    std::vector<int8_t> quantized_weights_data(product(weights_dims));
-    std::vector<int8_t> quantized_bias_data(product(bias_dims));
 
     auto src_md = memory::desc(src_dims, memory::data_type::f32, memory::format_tag::nchw);
     auto weights_md = memory::desc(weights_dims,memory::data_type::f32, memory::format_tag::nchw);
     auto bias_md = memory::desc(bias_dims, memory::data_type::f32, memory::format_tag::a);
+
     auto conv_src_md = memory::desc(src_dims, memory::data_type::s8, memory::format_tag::nchw);
     auto conv_weights_md = memory::desc(weights_dims,memory::data_type::s8, memory::format_tag::nchw);
     auto conv_bias_md = memory::desc(bias_dims, memory::data_type::s32, memory::format_tag::a);
-    auto conv_dst_md = memory::desc(src_dims, memory::data_type::s8, memory::format_tag::nchw);
+
     auto dequantized_dst_md = memory::desc(src_dims, memory::data_type::f32, memory::format_tag::nchw);
 
     auto src_mem = memory(src_md, engine);
     auto weights_mem = memory(weights_md, engine);
     auto bias_mem = memory(bias_md, engine);
+
     auto quantized_src_mem = memory(conv_src_md, engine);
     auto quantized_weights_mem = memory(conv_weights_md, engine);
     auto quantized_bias_mem = memory(conv_bias_md, engine);
+
     auto dequantized_dst_mem = memory(dequantized_dst_md, engine);
 
     write_to_dnnl_memory(src_data.data(), src_mem);
     write_to_dnnl_memory(weights_data.data(), weights_mem);
     write_to_dnnl_memory(bias_data.data(), bias_mem);
 
-    std::vector<float> scalesIn{scaleIn};
-    std::vector<float> scalesOut{1 / scaleIn};
+    float scaleSrc;
+    if(userData.AbsoluteMaximumValue() >= kernel.AbsoluteMaximumValue())
+    {
+        scaleSrc = kernel.AbsoluteMaximumValue();
+    }
+    else
+    {
+        scaleSrc = userData.AbsoluteMaximumValue();
+    }
 
-    // Quantized source data f32 -> int8
-        primitive_attr reorder_src_attr;    
-        reorder_src_attr.set_output_scales(0 | (1 << IC), scalesIn);
-        auto reorder_src_pd = reorder::primitive_desc(engine, src_md, engine, conv_src_md, reorder_src_attr);
-        auto reorder_src_prim = reorder(reorder_src_pd);
-        std::unordered_map<int, memory> reorder_src_args;
-            reorder_src_args.insert({DNNL_ARG_SRC, src_mem});
-            reorder_src_args.insert({DNNL_ARG_DST, quantized_src_mem});
-        reorder_src_prim.execute(engine_stream, reorder_src_args);
-    
-    // Quantize weights f32 -> int8
-        primitive_attr reorder_weights_attr;    
-        reorder_weights_attr.set_output_scales(0 | (1 << IC), scalesIn);
-        auto reorder_weights_pd = reorder::primitive_desc(engine, weights_md, engine, conv_weights_md, reorder_src_attr);
-        auto reorder_weights_prim = reorder(reorder_weights_pd);
-        std::unordered_map<int, memory> reorder_weights_args;
-            reorder_weights_args.insert({DNNL_ARG_SRC, weights_mem});
-            reorder_weights_args.insert({DNNL_ARG_DST, quantized_weights_mem});
-        reorder_weights_prim.execute(engine_stream, reorder_weights_args);
+    float scaleBias = scaleSrc * scaleSrc;
+    float scaleOut = 1 / scaleBias;
 
-    // Quantize bias f32 -> int32
-        primitive_attr reorder_bias_attr;    
-        reorder_bias_attr.set_output_scales(0 | (1 << IC), scalesIn);
-        auto reorder_bias_pd = reorder::primitive_desc(engine, bias_md, engine, conv_bias_md, reorder_src_attr);
-        auto reorder_bias_prim = reorder(reorder_bias_pd);
-        std::unordered_map<int, memory> reorder_bias_args;
-            reorder_bias_args.insert({DNNL_ARG_SRC, bias_mem});
-            reorder_bias_args.insert({DNNL_ARG_DST, quantized_bias_mem});
-        reorder_bias_prim.execute(engine_stream, reorder_bias_args);
+    std::vector<float> scalesSource{scaleSrc};
+    std::vector<float> scalesWeights{scaleSrc};
+    std::vector<float> scalesBias{scaleBias};
+    std::vector<float> scalesOutput{scaleOut};
 
-    // Conv on int8
-        auto conv_desc = convolution_forward::desc(prop_kind::forward,
-            algorithm::convolution_direct, conv_src_md, conv_weights_md,
-            conv_bias_md, dequantized_dst_md, strides_dims, padding_dims_l,
-            padding_dims_r);
+    primitive_attr reorder_src_attr;    
+    reorder_src_attr.set_output_scales(0, scalesSource);
+    auto reorder_src_pd = reorder::primitive_desc(engine, src_md, engine, conv_src_md, reorder_src_attr);
+    auto reorder_src_prim = reorder(reorder_src_pd);
+    std::unordered_map<int, memory> reorder_src_args;
+        reorder_src_args.insert({DNNL_ARG_SRC, src_mem});
+        reorder_src_args.insert({DNNL_ARG_DST, quantized_src_mem});
+    reorder_src_prim.execute(engine_stream, reorder_src_args);
 
-        auto conv_pd = convolution_forward::primitive_desc(conv_desc, engine);
+    primitive_attr reorder_weights_attr;    
+    reorder_weights_attr.set_output_scales(0, scalesWeights);
+    auto reorder_weights_pd = reorder::primitive_desc(engine, weights_md, engine, conv_weights_md, reorder_src_attr);
+    auto reorder_weights_prim = reorder(reorder_weights_pd);
+    std::unordered_map<int, memory> reorder_weights_args;
+        reorder_weights_args.insert({DNNL_ARG_SRC, weights_mem});
+        reorder_weights_args.insert({DNNL_ARG_DST, quantized_weights_mem});
+    reorder_weights_prim.execute(engine_stream, reorder_weights_args);
 
-        auto conv_src_mem = quantized_src_mem;
-        auto conv_weights_mem = quantized_weights_mem;
-        auto conv_dst_mem = dequantized_dst_mem;
+    primitive_attr reorder_bias_attr;    
+    reorder_bias_attr.set_output_scales(0, scalesBias);
+    auto reorder_bias_pd = reorder::primitive_desc(engine, bias_md, engine, conv_bias_md, reorder_src_attr);
+    auto reorder_bias_prim = reorder(reorder_bias_pd);
+    std::unordered_map<int, memory> reorder_bias_args;
+        reorder_bias_args.insert({DNNL_ARG_SRC, bias_mem});
+        reorder_bias_args.insert({DNNL_ARG_DST, quantized_bias_mem});
+    reorder_bias_prim.execute(engine_stream, reorder_bias_args);
 
-        if (conv_pd.src_desc() != quantized_src_mem.get_desc()) {
-            conv_src_mem = memory(conv_pd.src_desc(), engine);
-        }
+    primitive_attr conv_attr;    
+    conv_attr.set_output_scales(2, scalesOutput);
+    auto conv_desc = convolution_forward::desc(prop_kind::forward,
+        algorithm::convolution_direct, conv_src_md, conv_weights_md,
+        conv_bias_md, dequantized_dst_md, strides_dims, padding_dims,
+        padding_dims);
 
-        if (conv_pd.weights_desc() != quantized_weights_mem.get_desc()) {
-            conv_weights_mem = memory(conv_pd.weights_desc(), engine);
-            reorder(weights_mem, conv_weights_mem)
-                .execute(engine_stream, weights_mem, conv_weights_mem);
-        }
+    auto conv_pd = convolution_forward::primitive_desc(conv_desc, conv_attr, engine);
+    auto conv_prim = convolution_forward(conv_pd);
 
-        if (conv_pd.dst_desc() != dequantized_dst_mem.get_desc()) {
-            conv_dst_mem = memory(conv_pd.dst_desc(), engine);
-        }
-
-        auto conv_prim = convolution_forward(conv_pd);
-
-        std::unordered_map<int, memory> conv_args;
-        conv_args.insert({DNNL_ARG_SRC, conv_src_mem});
-        conv_args.insert({DNNL_ARG_WEIGHTS, conv_weights_mem});
+    std::unordered_map<int, memory> conv_args;
+        conv_args.insert({DNNL_ARG_SRC, quantized_src_mem});
+        conv_args.insert({DNNL_ARG_WEIGHTS, quantized_weights_mem});
         conv_args.insert({DNNL_ARG_BIAS, quantized_bias_mem});
-        conv_args.insert({DNNL_ARG_DST, conv_dst_mem});
+        conv_args.insert({DNNL_ARG_DST, dequantized_dst_mem});
 
-        conv_prim.execute(engine_stream, conv_args);
-
-        if (conv_pd.dst_desc() != dequantized_dst_mem.get_desc()) {
-            reorder(conv_dst_mem, dequantized_dst_mem)
-                    .execute(engine_stream, conv_dst_mem, dequantized_dst_mem);
-        } else
-            dequantized_dst_mem = conv_dst_mem;
-
-        engine_stream.wait();
+    conv_prim.execute(engine_stream, conv_args);
+    engine_stream.wait();
 
     read_from_dnnl_memory(dequantized_dst_data.data(), dequantized_dst_mem);
-
-
     return Matrix<float>(dequantized_dst_data, IW);
 }
